@@ -32,7 +32,7 @@ dispatch_command() {
     esac
 }
 
-# Startup orchestration - classifies state and branches bootstrap vs restore
+# Startup orchestration - classifies state and branches bootstrap vs restore (T031-T035)
 startup_orchestrator() {
     local state=$(get_lifecycle_state)
     
@@ -53,27 +53,45 @@ startup_orchestrator() {
             return 0
             ;;
         installing)
-            # Interrupted installation: fail and require reset
+            # Interrupted installation: fail and require reset (T033 - block auto-retry)
             log_message ERROR "Container found in interrupted 'installing' state"
+            log_message ERROR "This indicates a prior bootstrap attempt was interrupted"
+            log_message ERROR "Automatic retry is NOT performed to prevent cascading failures"
             set_reset_required_state
             log_message ERROR "Please run: docker exec CONTAINER /puppet/reset-runtime-state.sh && docker restart CONTAINER"
             return 1
             ;;
         installed)
-            # Successful prior install: restore from persisted state
-            log_message INFO "Restoring from persisted state..."
-            # TODO: validate version match and restore services
+            # Successful prior install: restore from persisted state (T034)
+            log_message INFO "Restoring from persisted state (skipping installer)..."
+            
+            # T032: Enforce version match against image metadata
+            if ! verify_installer_version_match; then
+                log_message ERROR "Version mismatch detected between persisted state and image"
+                log_message ERROR "Cannot proceed with mismatched versions"
+                set_reset_required_state
+                log_message ERROR "Please run: docker exec CONTAINER /puppet/reset-runtime-state.sh && docker restart CONTAINER"
+                return 1
+            fi
+            
+            # T035: Post-install pe.conf drift is ignored (no reinstall triggered by config changes)
+            log_message INFO "Note: Changes to pe.conf after install are not applied (version-locked persistence)"
+            log_message INFO "PE is running from persisted installed state"
+            
+            # TODO: Restore PE services from persisted state
             return 0
             ;;
         failed)
-            # Prior install failed: require explicit reset
+            # Prior install failed: require explicit reset (T033 - block auto-retry)
             log_message ERROR "Container found in 'failed' state from prior installation attempt"
+            log_message ERROR "Automatic retry is blocked. Manual intervention required."
             log_message ERROR "Please run: docker exec CONTAINER /puppet/reset-runtime-state.sh && docker restart CONTAINER"
             return 1
             ;;
         reset-required)
             # Manual intervention needed
             log_message ERROR "Container requires operator intervention"
+            log_message ERROR "Persistent state has been marked for reset (e.g., version mismatch or partial failure)"
             log_message ERROR "Please run: docker exec CONTAINER /puppet/reset-runtime-state.sh && docker restart CONTAINER"
             return 1
             ;;

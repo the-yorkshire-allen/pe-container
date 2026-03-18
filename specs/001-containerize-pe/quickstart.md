@@ -141,38 +141,192 @@ Expected result:
 - Service reaches healthy `/status/v1/simple`.
 
 
-## 4. Restart Validation
+## 4. Restart Validation (T038 - Restart Behavior)
 
-Example workflow:
+After successful bootstrap completion, validate restart behavior:
 
+### Step 4a: Initial Health Check
 ```bash
-docker stop pe-primary
-docker start pe-primary
+# Verify container is healthy after bootstrap  
+docker ps --format 'table {{.Names}}\t{{.Status}}'
+# Expected: Status shows "healthy"
+
+# Verify via health endpoint
+docker exec pe-primary /puppet/healthcheck.sh
+echo "Exit code: $?"  # Should be 0 (healthy)
 ```
 
-Expected result:
+### Step 4b: Trigger Container Restart
+```bash
+# Stop and restart the container
+docker stop pe-primary
+docker start pe-primary
 
-- Restart skips installer.
-- Service restores from persisted state.
-- Healthy `/status/v1/simple` is observed again.
+# Monitor startup logs (should skip installer)
+docker logs pe-primary | tail -20
+# Expected: "Restoring from persisted state" (NOT "Starting: preflight_validation")
+```
 
-## 5. Failure Scenarios
+### Step 4c: Verify Restore, Not Reinstall
+```bash
+# Confirm no bootstrap re-execution
+docker logs pe-primary | grep -c "preflight_validation" || echo "0"
+# Expected: Does not show bootstrap steps (or shows 0 matches)
+
+# Confirm restore path was taken
+docker logs pe-primary | grep "Restoring from persisted state"
+# Expected: Found in logs
+```
+
+### Step 4d: Verify Health After Restart
+```bash
+# Verify container is still healthy
+sleep 10  # Wait for services to stabilize
+docker ps --format 'table {{.Names}}\t{{.Status}}'
+# Expected: Status still shows "healthy"
+
+docker exec pe-primary /puppet/healthcheck.sh
+echo "Exit code: $?"  # Should be 0 (healthy)
+```
+
+### Step 4e: Verify Persistence Across Restart
+```bash
+# Check that PE configuration is preserved
+docker exec pe-primary [ -f /etc/puppetlabs/pe/pe.conf ] && echo "Found" || echo "Missing"
+# Expected: "Found"
+
+# Verify version marker matches
+docker exec pe-primary cat /puppet/state/.pe-version 2>/dev/null
+# Expected: Shows version number (e.g., "2024.7.0")
+```
+
+**Expected Outcome**:
+- Container restarts and immediately enters healthy state (no installer re-execution)
+- PE services are restored from persisted volumes
+- Configuration and installed version are preserved
+
+---
 
 ### Invalid Build Inputs
 
 - Omit `PE_VERSION` or point `PE_INSTALLER_TAR_PATH` to missing file.
 - Confirm build fails fast and no successful build artifact is reported.
 
-### Version Mismatch on Restart
+### Version Mismatch on Restart (T038)
 
 - Start a different image version against existing persisted state.
 - Confirm startup is blocked with operator-action-required messaging.
 
-### Partial Install Recovery
+```bash
+# After successful bootstrap with version 2024.7.0, create new image with 2025.0.0
+PE_VERSION_OLD="2024.7.0"
+PE_VERSION_NEW="2025.0.0"
 
-- Simulate failed first install that leaves partial state.
-- Confirm subsequent starts remain blocked until explicit reset.
-- Confirm repeated agent runs do not trigger installation retry before reset.
+# Build new version image
+docker build \
+  --build-arg PE_VERSION=${PE_VERSION_NEW} \
+  --build-arg PE_INSTALLER_TAR_PATH=/path/to/pe-${PE_VERSION_NEW}.tar.gz \
+  -t pe-container:${PE_VERSION_NEW} .
+
+# Tag as latest and restart (against old volumes)
+docker tag pe-container:${PE_VERSION_NEW} pe-container:latest
+docker restart pe-primary
+
+# Verify blocked with version mismatch error
+docker logs pe-primary | grep "Version mismatch"  # Expected
+docker ps pe-primary  # Should show exited state
+```
+
+### Partial Install Recovery (T038)
+
+- Simulate failed first install that leaves partial state (interrupt mid-bootstrap)
+- Confirm subsequent starts remain blocked until explicit reset
+- Confirm repeated agent runs do not trigger installation retry before reset
+
+```bash
+# Simulate interruption during bootstrap
+docker run -d ... pe-container:${PE_VERSION}
+sleep 15 && docker kill pe-primary  # Kill mid-install
+
+# Verify state = installing (interrupted)
+docker logs pe-primary | grep "installing"
+
+# Try to restart (should fail with reset-required message)
+docker start pe-primary
+sleep 5
+docker ps pe-primary  # Should be exited
+docker logs pe-primary | grep "reset-required"
+
+# Try restarting again without reset (simulates agent retry)
+docker start pe-primary
+sleep 5
+docker ps pe-primary  # Still exited - no auto-retry!
+
+# Now reset and retry
+docker exec pe-primary /puppet/reset-runtime-state.sh
+docker restart pe-primary  # Bootstrap retries from beginning
+```
+
+### Failed Bootstrap Retry Blocking (T338)
+
+- Bootstrap fails due to invalid config (e.g., missing console_password)
+- Verify subsequent starts remain blocked
+- Verify explicit reset is required before retry
+
+```bash
+#Create broken pe.conf (missing console_password)
+cat > /tmp/broken.conf << 'EOF'
+puppet_enterprise::profile::master::certname=puppet.example.com
+# Missing console_password!
+EOF
+
+# First boot fails
+docker run -d \
+  -v /tmp/broken.conf:/etc/puppetlabs/pe/pe.conf:ro \
+  -v pe-state:/puppet/state \
+  pe-container:${PE_VERSION}
+
+sleep 20 && docker logs pe-primary | grep "console_password_validation"  # Shows failure
+
+# Try restart (still fails, no retry)
+docker restart pe-primary
+sleep 5
+docker ps pe-primary  # Still exited
+
+# Fix config and reset
+cat > /tmp/fixed.conf << 'EOF'
+puppet_enterprise::profile::master::certname=puppet.example.com
+console_password=SecurePassword123!
+EOF
+
+docker exec pe-primary /puppet/reset-runtime-state.sh
+docker restart pe-primary  # Bootstrap retries with fixed config
+```
+
+### Post-Install `pe.conf` Drift Ignore (T338)
+
+- Change `pe.conf` after successful install
+- Restart container  
+- Confirm startup restores persisted runtime and does not reinstall with new config
+
+```bash
+# After successful bootstrap...
+# Modify pe.conf with new settings
+cat > /tmp/modified.conf << 'EOF'
+puppet_enterprise::profile::master::certname=puppet.example.com
+console_password=NewPassword456!  # Changed password
+puppet_enterprise::profile::master::code_manager_auto_configure=false  # New setting
+EOF
+
+# Restart (using modified config, but should ignore it)
+docker stop pe-primary
+# (In practice, Docker Compose volume remount or re-exec)
+docker start pe-primary
+
+# Verify old configuration is used (not new one)
+docker logs pe-primary | grep "Restoring from persisted state"  # Restore message (no reinstall)
+# PE continues with original settings, not modified ones
+
 
 ## 6. Reset Workflow
 
