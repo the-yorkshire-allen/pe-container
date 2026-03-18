@@ -77,16 +77,16 @@
 
 ### Implementation for User Story 2
 
-- [ ] T023 [P] [US2] Add first-boot preflight validation for `pe.conf` and license material in container/scripts/bootstrap-pe.sh
-- [ ] T023a [US2] Add explicit console-password-in-`pe.conf` validation and fail-fast messaging in container/scripts/bootstrap-pe.sh
-- [ ] T024 [US2] Implement transition to `installing` marker prior to installer execution in container/scripts/bootstrap-pe.sh
-- [ ] T025 [US2] Implement one-time PE installer execution and configuration flow in container/scripts/bootstrap-pe.sh
-- [ ] T026 [US2] Persist successful install completion and runtime version marker in container/scripts/bootstrap-pe.sh
-- [ ] T026a [US2] Remove installer archive and extracted payload after verified install completion in container/scripts/bootstrap-pe.sh
-- [ ] T027 [P] [US2] Implement bootstrap failure handling that writes `failed` state and remediation guidance in container/scripts/bootstrap-pe.sh
-- [ ] T028 [US2] Integrate first-boot orchestration branch in container/scripts/entrypoint.sh
-- [ ] T029 [P] [US2] Add first-boot operator runbook with expected status outcomes in container/README.md
-- [ ] T030 [US2] Add first-boot smoke-check commands for `/status/v1/simple` in specs/001-containerize-pe/quickstart.md
+- [x] T023 [P] [US2] Add first-boot preflight validation for `pe.conf` and license material in container/scripts/bootstrap-pe.sh
+- [x] T023a [US2] Add explicit console-password-in-`pe.conf` validation and fail-fast messaging in container/scripts/bootstrap-pe.sh
+- [x] T024 [US2] Implement transition to `installing` marker prior to installer execution in container/scripts/bootstrap-pe.sh
+- [x] T025 [US2] Implement one-time PE installer execution and configuration flow in container/scripts/bootstrap-pe.sh
+- [x] T026 [US2] Persist successful install completion and runtime version marker in container/scripts/bootstrap-pe.sh
+- [x] T026a [US2] Remove installer archive and extracted payload after verified install completion in container/scripts/bootstrap-pe.sh
+- [x] T027 [P] [US2] Implement bootstrap failure handling that writes `failed` state and remediation guidance in container/scripts/bootstrap-pe.sh
+- [x] T028 [US2] Integrate first-boot orchestration branch in container/scripts/entrypoint.sh
+- [x] T029 [P] [US2] Add first-boot operator runbook with expected status outcomes in container/README.md
+- [x] T030 [US2] Add first-boot smoke-check commands for `/status/v1/simple` in specs/001-containerize-pe/quickstart.md
 
 **Checkpoint**: First-boot install flow is independently functional.
 

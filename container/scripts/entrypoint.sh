@@ -40,9 +40,16 @@ startup_orchestrator() {
     
     case "$state" in
         uninitialized)
-            # First-time setup: validate config and launch bootstrap
+            # First-time setup: validate config and launch bootstrap (T028)
             log_message INFO "First-time setup detected - preparing to bootstrap"
-            # TODO: source bootstrap-pe.sh and call bootstrap_pe
+            
+            # Source and execute bootstrap workflow
+            if [ -x "${script_dir}/bootstrap-pe.sh" ]; then
+                "${script_dir}/bootstrap-pe.sh" || return 1
+            else
+                log_message ERROR "Bootstrap script not found or not executable"
+                return 1
+            fi
             return 0
             ;;
         installing)

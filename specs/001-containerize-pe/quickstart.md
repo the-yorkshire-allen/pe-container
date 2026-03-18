@@ -50,7 +50,7 @@ Expected result:
 
 - Persistence targets are available before first run.
 
-## 3. First Boot
+## 3. First Boot (T030 - Validation Steps)
 
 Example workflow:
 
@@ -64,12 +64,82 @@ docker run --name pe-primary \
   pe-container:${PE_VERSION}
 ```
 
+### Bootstrap Validation Checklist
+
+After container starts, validate bootstrap progress through these steps:
+
+#### Step 3a: Verify Configuration Validation
+```bash
+# Expected: preflight_validation succeeds
+docker logs pe-primary | grep "preflight_validation"
+# Output: [Bootstrap] Success: preflight_validation
+```
+
+#### Step 3b: Verify Console Password Validation
+```bash
+# Expected: console_password validation succeeds
+docker logs pe-primary | grep "console_password_validation"
+# Output: [Bootstrap] Success: console_password_validation
+```
+
+**If this fails**: Check pe.conf contains `console_password=<non-empty-value>`
+```bash
+grep "^console_password" /path/to/pe.conf | head -1
+```
+
+#### Step 3c: Verify Installing State Transition
+```bash
+# Expected: lifecycle state transitions to "installing"
+docker logs pe-primary | grep "set_installing_marker"
+# Output: [Bootstrap] Success: set_installing_marker
+```
+
+#### Step 3d: Monitor Installer Execution
+```bash
+# Expected: installer runs (15-30 minutes typical for PE)
+# Monitor logs in real-time
+docker logs -f pe-primary
+
+# Look for progress indicators from PE installer
+# This phase typically outputs lines like:
+# - Installation progress checks
+# - Service startup messages
+# - Database initialization
+```
+
+#### Step 3e: Verify Installation Completion
+```bash
+# Expected: install completion marker persisted
+docker logs pe-primary | grep "persist_install_completion"
+# Output: [Bootstrap] Success: persist_install_completion
+```
+
+#### Step 3f: Verify Installer Cleanup
+```bash
+# Expected: installer artifacts removed
+docker logs pe-primary | grep "cleanup_installer_artifacts"
+# Output: [Bootstrap] Success: cleanup_installer_artifacts
+
+# Confirm staging directory is empty:
+docker exec pe-primary ls -la /puppet/installer-staging/
+# Should be empty or show only subdirectory structure, no tar.gz
+```
+
+#### Step 3g: Verify Bootstrap Complete
+```bash
+# Expected: Final bootstrap success message
+docker logs pe-primary | grep "Bootstrap Complete"
+# Output: === Bootstrap Complete ===
+```
+
 Expected result:
 
 - Startup enters first-install mode.
+- All bootstrap validation steps succeed in sequence.
 - Lifecycle markers and version marker are persisted on success.
 - Installer tar.gz and extracted installer payload are removed from runtime filesystem after install verification.
 - Service reaches healthy `/status/v1/simple`.
+
 
 ## 4. Restart Validation
 
