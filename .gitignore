@@ -1,0 +1,43 @@
+# Bash/Shell
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker/OCI
+.dockerconfig
+.docker/
+
+# Build artifacts
+build/
+dist/
+*.log
+*.log.*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+.sublime-project
+.sublime-workspace
+
+# Git
+.git/
+.gitkeep
+
+# Development
+tmp/
+temp/
+*.tmp
+
+# Project-specific
+container/.build/
+tests/artifacts/
