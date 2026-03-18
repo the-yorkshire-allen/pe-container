@@ -1,0 +1,174 @@
+# Docker Compose Profile: PE Primary + Connected Agent Node
+# This example demonstrates PE primary + single managed node topology
+# Reference: container/docs/connected-nodes.md (T040)
+
+version: '3.8'
+
+services:
+  # PE Primary Server (from container/compose/docker-compose.example.yml)
+  pe-primary:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        PE_VERSION: "2024.7.0"
+        PE_INSTALLER_TAR_PATH: "/path/to/puppet-enterprise-2024.7.0.tar.gz"
+    image: pe-primary:2024.7.0
+    container_name: pe-primary
+    hostname: pe-primary.example.local
+    networks:
+      - pe-network
+    ports:
+      - "8140:8140"   # Puppet agent port
+      - "8142:8142"   # PuppetDB SSL
+      - "8143:8143"   # PE Console
+      - "8170:8170"   # Puppet Sync (if enabled)
+    volumes:
+      - pe-config:/etc/puppetlabs
+      - pe-data:/opt/puppetlabs
+      - pe-logs:/var/log/puppetlabs
+      - pe-state:/puppet/state
+      # Mount pe.conf read-only
+      - ./shared/pe.conf:/etc/puppetlabs/pe/pe.conf:ro
+    environment:
+      - PE_CONF_FILE=/etc/puppetlabs/pe/pe.conf
+      - PE_STATE_DIR=/puppet/state
+    healthcheck:
+      test: ["/bin/bash", "-c", "/puppet/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s  # Extended for bootstrap/installer
+
+  # Connected Agent Node #1
+  # This demonstrates a Puppet agent node that connects to PE primary
+  pe-agent-1:
+    image: ubuntu:22.04
+    container_name: pe-agent-1
+    hostname: agent-1.example.local
+    networks:
+      - pe-network
+    depends_on:
+      pe-primary:
+        condition: service_healthy
+    # Volume to persist agent state and logs
+    volumes:
+      - agent-1-state:/etc/puppetlabs
+      - agent-1-logs:/var/log/puppetlabs
+    # Environment to configure agent
+    environment:
+      - PUPPET_SERVER=pe-primary
+      - PUPPET_CA_SERVER=pe-primary
+      - FACTER_networking_interfaces="eth0"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # Wait for PE to be ready
+        echo "Waiting for PE primary to be healthy..."
+        for i in {1..30}; do
+          if nc -z pe-primary 8140 2>/dev/null; then
+            echo "PE primary is reachable on port 8140"
+            break
+          fi
+          echo "Attempt $i: PE not ready yet, waiting..."
+          sleep 5
+        done
+        
+        # Install Puppet Agent from official repository
+        apt-get update
+        apt-get install -y wget gnupg
+        
+        # Add Puppet repository
+        wget -q https://apt.puppet.com/puppet8-release-$(lsb_release -cs).deb
+        dpkg -i puppet8-release-$(lsb_release -cs).deb
+        apt-get update
+        apt-get install -y puppet-agent
+        
+        # Configure agent to connect to PE primary
+        mkdir -p /etc/puppetlabs/puppet
+        cat > /etc/puppetlabs/puppet/puppet.conf << 'PUPPETCONF'
+        [main]
+        certname = agent-1.example.local
+        server = pe-primary.example.local
+        environment = production
+        
+        [agent]
+        runinterval = 30m
+        PUPPETCONF
+        
+        # Generate or request certificate
+        echo "Requesting certificate from PE..."
+        /opt/puppetlabs/bin/puppet agent -t --certname=agent-1.example.local || true
+        
+        # Keep container running
+        tail -f /dev/null
+
+  # Connected Agent Node #2 (optional additional node)
+  pe-agent-2:
+    image: ubuntu:22.04
+    container_name: pe-agent-2
+    hostname: agent-2.example.local
+    networks:
+      - pe-network
+    depends_on:
+      pe-primary:
+        condition: service_healthy
+    volumes:
+      - agent-2-state:/etc/puppetlabs
+      - agent-2-logs:/var/log/puppetlabs
+    environment:
+      - PUPPET_SERVER=pe-primary
+      - PUPPET_CA_SERVER=pe-primary
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # Same setup as agent-1 (in production, use configuration management)
+        apt-get update
+        apt-get install -y wget gnupg
+        wget -q https://apt.puppet.com/puppet8-release-$(lsb_release -cs).deb
+        dpkg -i puppet8-release-$(lsb_release -cs).deb
+        apt-get update
+        apt-get install -y puppet-agent
+        
+        mkdir -p /etc/puppetlabs/puppet
+        cat > /etc/puppetlabs/puppet/puppet.conf << 'PUPPETCONF'
+        [main]
+        certname = agent-2.example.local
+        server = pe-primary.example.local
+        environment = production
+        
+        [agent]
+        runinterval = 30m
+        PUPPETCONF
+        
+        echo "Requesting certificate from PE..."
+        /opt/puppetlabs/bin/puppet agent -t --certname=agent-2.example.local || true
+        tail -f /dev/null
+
+# Shared network for PE and agents
+networks:
+  pe-network:
+    driver: bridge
+
+# Volumes for PE primary persistence
+volumes:
+  pe-config:
+    driver: local
+  pe-data:
+    driver: local
+  pe-logs:
+    driver: local
+  pe-state:
+    driver: local
+
+# Volumes for agent nodes (to persist agent state across restarts)
+  agent-1-state:
+    driver: local
+  agent-1-logs:
+    driver: local
+  agent-2-state:
+    driver: local
+  agent-2-logs:
+    driver: local

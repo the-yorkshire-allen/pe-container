@@ -16,7 +16,6 @@ PE_IMAGE_VERSION_FILE="${PE_STATE_DIR}/.image-version"
 
 # Installer staging
 PE_INSTALLER_STAGING="${PE_INSTALLER_STAGING:-/puppet/installer-staging}"
-PE_INSTALLER_BUILD_METADATA="${PE_STATE_DIR}/.installer-metadata"
 
 # Initialize state directory if needed
 init_state_dir() {
@@ -177,7 +176,8 @@ verify_installer_version_match() {
     
     # Extract version metadata from inside the tar without full extraction
     # Look for puppet-enterprise/VERSION or similar marker
-    local tar_version=$(tar -tzf "$tar_path" | grep -i 'VERSION\|version' | head -1 | tr '\n' ' ')
+    local tar_version
+    tar_version=$(tar -tzf "$tar_path" | grep -i 'VERSION\|version' | head -1 | tr -d '\n')
     
     if [ -z "$tar_version" ]; then
         echo "WARNING: Could not extract version metadata from installer tar" >&2

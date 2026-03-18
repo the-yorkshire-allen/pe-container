@@ -4,12 +4,22 @@
 
 This contract specifies the deterministic behavior of restarted PE containers, including supported scenarios, failure states, and required operator actions.
 
-## Scope
+## Scope (T043)
 
+### This Contract Covers
 - **Restart**: Lifecycle after successful first-boot bootstrap
-- **Restore**: Recovering PE from persisted volumes  
+- **Restore**: Recovering PE from persisted volumes
 - **Reset**: Manual operator-triggered state cleanup
-- **Out of Scope**: In-place PE upgrades, automatic retry after failure, configuration drift application
+- **Connected Nodes**: Agent nodes that connect to this PE primary for Puppet runs and classification
+
+### Out of Scope
+- In-place PE version upgrades (requires new image build)
+- Automatic retry after installation failure
+- Configuration drift application from pe.conf after bootstrap
+- Agent node infrastructure (OS provisioning, network, DNS)
+- PE agent installation on remote nodes (operator responsibility)
+- Running multiple PE versions simultaneously
+- HA/multi-primary PE deployments
 
 ## Required Runtime Inputs
 

@@ -55,7 +55,8 @@ validate_console_password() {
     fi
     
     # Extract console_password value (handle whitespace and quoted values)
-    local console_pwd=$(grep '^[[:space:]]*console_password' "${PE_CONF_FILE}" | cut -d'=' -f2 | tr -d '[[:space:]]' | tr -d '"')
+    local console_pwd
+    console_pwd=$(grep '^[[:space:]]*console_password' "${PE_CONF_FILE}" | cut -d'=' -f2 | tr -d '[:space:]' | tr -d '"')
     
     if [ -z "$console_pwd" ]; then
         log_message ERROR "console_password in pe.conf is empty"
@@ -79,7 +80,7 @@ write_installing_marker() {
         return 1
     fi
     
-    persist_image_version "$(cat /puppet/state/.build-metadata | grep PE_VERSION | cut -d'=' -f2)"
+    persist_image_version "$(grep PE_VERSION /puppet/state/.build-metadata | cut -d'=' -f2)"
     
     log_message INFO "Lifecycle state transitioning to: installing"
     log_bootstrap_step "set_installing_marker" "success"

@@ -45,10 +45,10 @@ validate_markers() {
     
     # Check that only one state marker exists
     local marker_count=0
-    [ -f "${PE_MARKER_INSTALLED}" ] && ((marker_count++)) || true
-    [ -f "${PE_MARKER_FAILED}" ] && ((marker_count++)) || true
-    [ -f "${PE_MARKER_RESET_REQUIRED}" ] && ((marker_count++)) || true
-    [ -f "${PE_MARKER_INSTALLING}" ] && ((marker_count++)) || true
+    [ -f "${PE_MARKER_INSTALLED}" ]      && (( marker_count++ )) || :
+    [ -f "${PE_MARKER_FAILED}" ]         && (( marker_count++ )) || :
+    [ -f "${PE_MARKER_RESET_REQUIRED}" ] && (( marker_count++ )) || :
+    [ -f "${PE_MARKER_INSTALLING}" ]     && (( marker_count++ )) || :
     
     if [ $marker_count -gt 1 ]; then
         log_integrity_issue "marker_missing" "Multiple state markers present (corrupt state directory)"
@@ -80,8 +80,9 @@ validate_marker_parseability() {
 
 # Enhanced version metadata validation (T031a - metadata format and compatibility checks)
 validate_version_metadata() {
-    local persisted_version=$(get_persisted_version 2>/dev/null || echo "")
-    local image_version=$(get_persisted_image_version 2>/dev/null || echo "")
+    local persisted_version image_version
+    persisted_version=$(get_persisted_version 2>/dev/null || echo "")
+    image_version=$(get_persisted_image_version 2>/dev/null || echo "")
     
     # Check metadata parseability (T031a)
     if [ -n "$persisted_version" ]; then
@@ -118,7 +119,8 @@ validate_version_metadata() {
 
 # Restart state classifier for determining restart behavior (T031)
 classify_restart_state() {
-    local current_state=$(get_lifecycle_state)
+    local current_state
+    current_state=$(get_lifecycle_state)
     
     case "$current_state" in
         installed)
@@ -150,7 +152,8 @@ classify_restart_state() {
 
 # Full integrity check (T031a - comprehensive validation)
 check_integrity() {
-    local state=$(get_lifecycle_state)
+    local state
+    state=$(get_lifecycle_state)
     
     log_message INFO "Validating runtime state integrity..."
     

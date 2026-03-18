@@ -34,7 +34,8 @@ dispatch_command() {
 
 # Startup orchestration - classifies state and branches bootstrap vs restore (T031-T035)
 startup_orchestrator() {
-    local state=$(get_lifecycle_state)
+    local state
+    state=$(get_lifecycle_state)
     
     log_message INFO "PE container startup - lifecycle state: ${state}"
     

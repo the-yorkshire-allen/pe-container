@@ -10,7 +10,8 @@ source "${script_dir}/lib/status-probe.sh"
 
 # Emit startup outcome health status
 healthcheck() {
-    local state=$(get_lifecycle_state)
+    local state
+    state=$(get_lifecycle_state)
     local exit_code
     
     # Map state to health probe output and exit code

@@ -5,7 +5,8 @@
 log_message() {
     local severity="$1"
     local message="$2"
-    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     
     case "$severity" in
         INFO)

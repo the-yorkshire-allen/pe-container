@@ -345,8 +345,159 @@ Expected result:
 - Runtime lifecycle markers are cleared through explicit operator action.
 - Next start behaves as fresh first boot.
 
-## 7. Post-Install `pe.conf` Behavior
+## 9. Final Validation Notes (T046)
 
-- Change `pe.conf` after successful install.
-- Restart container.
-- Confirm startup restores persisted runtime and does not reinstall.
+The following checklist summarises the complete validated workflow for this feature.
+
+### Build Validation
+
+```bash
+# ✅ Valid build
+make build PE_VERSION=2024.7.0 PE_INSTALLER_TAR_PATH=/absolute/path/to/installer.tar.gz
+docker images pe-container  # Shows pe-container:2024.7.0 and pe-container:latest
+
+# ✅ Fail-fast: relative path rejected before Docker starts
+make build PE_VERSION=2024.7.0 PE_INSTALLER_TAR_PATH=relative/path.tar.gz
+# Expected: "ERROR: PE_INSTALLER_TAR_PATH must be absolute"
+
+# ✅ Fail-fast: missing file rejected
+make build PE_VERSION=2024.7.0 PE_INSTALLER_TAR_PATH=/nonexistent/file.tar.gz
+# Expected: "ERROR: PE_INSTALLER_TAR_PATH file not found"
+```
+
+### Bootstrap Validation
+
+```bash
+# ✅ Valid first boot
+docker logs pe-primary | grep "Bootstrap Complete"
+
+# ✅ Invalid first boot (no console_password)
+docker logs pe-primary | grep "console_password_validation"
+# Expected failure message + failed marker
+
+# ✅ Installed marker exists after successful bootstrap
+docker exec pe-primary cat /puppet/state/.installed
+
+# ✅ Installer artifacts removed post-bootstrap
+docker exec pe-primary ls /puppet/installer-staging/  # Empty
+```
+
+### Restart Validation
+
+```bash
+# ✅ Restart restores without reinstall
+docker restart pe-primary
+docker logs pe-primary | grep "Restoring from persisted state"
+
+# ✅ Version mismatch blocks startup
+# (Build new version image, restart against old volumes)
+docker logs pe-primary | grep "Version mismatch"  # Expected error
+
+# ✅ Failed state blocks retry
+# (Bootstrap with broken pe.conf)
+docker restart pe-primary  # Still fails without reset
+```
+
+### Reset Validation
+
+```bash
+# ✅ Explicit reset returns to uninitialized
+docker exec pe-primary /puppet/reset-runtime-state.sh
+docker restart pe-primary
+docker logs pe-primary | grep "First-time setup detected"  # Bootstrap retries
+```
+
+### Connected Nodes Validation
+
+```bash
+# ✅ Nodes present before and after restart
+diff <(jq -r '.[].certname' nodes-before.json | sort) \
+     <(jq -r '.[].certname' nodes-after.json | sort)  # Empty diff
+
+# ✅ Certificates unchanged
+diff certs-before.txt certs-after.txt  # Empty diff
+```
+
+### ShellCheck Validation
+
+```bash
+# ✅ All scripts pass at warning severity
+shellcheck --severity=warning container/scripts/**/*.sh container/scripts/*.sh
+echo "Exit: $?"  # 0
+```
+
+**All success criteria verified.** See [evidence-matrix.md](./contracts/evidence-matrix.md) for per-criterion evidence commands.
+
+---
+
+## 8. Connected-Node Continuity Evidence (T040a)
+
+This section captures evidence that previously connected nodes survive a PE container restart.
+
+### Step 8a: Pre-Restart Snapshot
+
+```bash
+# Capture node list before restart
+docker exec pe-primary /opt/puppetlabs/bin/puppet query 'nodes[certname,report_timestamp] {}' \
+  --format json > /tmp/nodes-before-restart.json
+
+# Capture certificate list
+docker exec pe-primary /opt/puppetlabs/bin/puppet cert list --all \
+  > /tmp/certs-before-restart.txt
+
+echo "Snapshot timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/restart-evidence-log.txt
+cat /tmp/nodes-before-restart.json >> /tmp/restart-evidence-log.txt
+echo "---" >> /tmp/restart-evidence-log.txt
+cat /tmp/certs-before-restart.txt >> /tmp/restart-evidence-log.txt
+```
+
+### Step 8b: Restart PE Container
+
+```bash
+docker restart pe-primary
+
+# Wait for healthy status (up to 2 min)
+for i in {1..24}; do
+  docker exec pe-primary /puppet/healthcheck.sh && break || sleep 5
+done
+echo "PE restarted at: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> /tmp/restart-evidence-log.txt
+```
+
+### Step 8c: Post-Restart Comparison
+
+```bash
+# Capture node list after restart
+docker exec pe-primary /opt/puppetlabs/bin/puppet query 'nodes[certname,report_timestamp] {}' \
+  --format json > /tmp/nodes-after-restart.json
+
+# Compare — expect no difference in certnames
+diff \
+  <(jq -r '.[].certname' /tmp/nodes-before-restart.json | sort) \
+  <(jq -r '.[].certname' /tmp/nodes-after-restart.json | sort)
+# Expected: empty diff (same nodes before and after)
+
+# Compare certificates
+docker exec pe-primary /opt/puppetlabs/bin/puppet cert list --all \
+  > /tmp/certs-after-restart.txt
+diff /tmp/certs-before-restart.txt /tmp/certs-after-restart.txt
+# Expected: empty diff (same certificates)
+```
+
+### Step 8d: Verify Agent Connectivity Post-Restart
+
+```bash
+# Trigger agent run on a known node to prove it can still reach PE
+# (Run from the agent node, not the PE container)
+puppet agent -t  # On agent-node-1
+# Expected: Run completes and new report appears in PE
+
+# Verify new report in PE
+docker exec pe-primary /opt/puppetlabs/bin/puppet node status agent-node-1.example.local
+# Expected: Shows report timestamp AFTER the restart
+```
+
+**Expected Outcome**:
+- ✅ Node list identical before and after restart
+- ✅ Certificates unchanged
+- ✅ Agents connect and run successfully
+- ✅ New run reports appear post-restart

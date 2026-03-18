@@ -108,9 +108,77 @@ tar -tzf /opt/pe-installers/puppet-enterprise-*.tar.gz > /dev/null && echo "Vali
 
 The first build performs image extraction and script setup. Subsequent builds using the same base image will be faster due to Docker layer caching.
 
+## Connected-Node Quick Reference (T042)
+
+Once PE is running, manage connected agent nodes with these commands:
+
+### View Nodes
+```bash
+# List all known nodes
+docker exec pe-primary puppet cert list --all
+
+# Query node inventory
+docker exec pe-primary puppet query 'nodes[certname,report_timestamp] {}' --format json
+```
+
+### Onboard a New Agent
+```bash
+# 1. On agent node — install puppet-agent and point at PE primary
+puppet config set server pe-primary.example.local
+puppet agent -t  # First run requests certificate
+
+# 2. In PE container — approve the certificate signing request
+docker exec pe-primary puppet cert sign <agent-certname>
+
+# 3. Verify — agent reruns and appears in console
+# PE Console → Infrastructure → Nodes
+```
+
+### Trigger Agent Run
+```bash
+# Via Bolt (from PE container)
+docker exec pe-primary bolt task run puppet_agent::run \
+  --targets pcp://<agent-certname>
+
+# Or trigger directly on the agent node
+puppet agent -t
+```
+
+### Remove an Agent Node
+```bash
+# Revoke certificate
+docker exec pe-primary puppet cert disable <agent-certname>
+
+# Clean node data
+docker exec pe-primary puppet node deactivate <agent-certname>
+```
+
+### Node Continuity After Restart
+```bash
+# Snapshot pre-restart
+docker exec pe-primary puppet cert list --all > /tmp/certs-before.txt
+
+# Restart container
+docker restart pe-primary
+
+# Verify nodes unchanged
+docker exec pe-primary puppet cert list --all > /tmp/certs-after.txt
+diff /tmp/certs-before.txt /tmp/certs-after.txt  # Expect: empty diff
+```
+
+### Node Example Compose Profile
+```bash
+# Start PE primary + two agent containers for testing
+docker compose -f container/compose/docker-compose.node-example.yml up -d
+```
+
+---
+
 ## Next Steps
 
-- See [Quickstart](../quickstart.md) for first-time startup and verification
-- See [Build Interface Contract](./build-interface.md) for detailed input/output specifications
-- See [Container Runtime Contract](./container-runtime.md) for runtime behavior and lifecycle
+- See [Quickstart](../specs/001-containerize-pe/quickstart.md) for first-time startup and verification
+- See [Build Interface Contract](../specs/001-containerize-pe/contracts/build-interface.md) for detailed input/output specifications
+- See [Container Runtime Contract](../specs/001-containerize-pe/contracts/container-runtime.md) for runtime behavior and lifecycle
+- See [Connected Nodes Runbook](./docs/connected-nodes.md) for agent onboarding and continuity procedures
+- See [Scope Boundaries](./docs/scope-boundaries.md) for what this container does and does not manage
 

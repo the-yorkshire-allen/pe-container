@@ -1,6 +1,6 @@
 # Puppet Enterprise in Docker
 # Build arguments for versioning and installer artifact handoff
-ARG BASE_IMAGE=centos:7
+ARG BASE_IMAGE=almalinux:9
 ARG PE_VERSION
 ARG PE_INSTALLER_TAR_PATH
 
@@ -31,7 +31,7 @@ RUN echo "PE_VERSION=${PE_VERSION}" > /puppet-staging/.build-metadata && \
 FROM ${BASE_IMAGE}
 
 # Install tini as PID 1 (handles signals and orphaned processes)
-RUN yum install -y tini && yum clean all
+RUN dnf install -y tini && dnf clean all
 
 # Create directories for lifecycle scripts and persistent state
 RUN mkdir -p /puppet/scripts/lib /puppet/state /puppet/installer-staging
@@ -53,7 +53,9 @@ COPY --from=build-validator /puppet-staging/.build-metadata /puppet/state/.build
 RUN chmod +x /puppet/entrypoint.sh /puppet/healthcheck.sh \
              /puppet/validate-runtime-state.sh /puppet/reset-runtime-state.sh
 
-# TODO: Copy bootstrap-pe.sh and other user-story-specific scripts once implemented
+COPY container/scripts/bootstrap-pe.sh /puppet/bootstrap-pe.sh
+RUN chmod +x /puppet/bootstrap-pe.sh
+
 
 # Set environment for state management
 ENV PE_STATE_DIR=/puppet/state
