@@ -172,12 +172,36 @@ check_integrity() {
     return 0
 }
 
+# Validate that installed-state runtime artifacts actually exist.
+validate_installed_runtime_artifacts() {
+    local missing=0
+
+    if [ ! -x "/opt/puppetlabs/bin/puppet" ]; then
+        log_integrity_issue "runtime_missing" "Missing executable PE runtime artifact: /opt/puppetlabs/bin/puppet"
+        missing=1
+    fi
+
+    if [ ! -d "/opt/puppetlabs" ] || [ -z "$(find /opt/puppetlabs -mindepth 1 -maxdepth 1 2>/dev/null)" ]; then
+        log_integrity_issue "runtime_missing" "Installed state is set, but /opt/puppetlabs is empty or unavailable"
+        missing=1
+    fi
+
+    return "$missing"
+}
+
 # Main: Called during startup to validate env before proceeding
 main() {
     if ! check_integrity; then
         log_message ERROR "Runtime state validation failed - system in intervention-required state"
         return 1
     fi
+
+    if [ "$(get_lifecycle_state)" = "installed" ] && ! validate_installed_runtime_artifacts; then
+        log_message ERROR "Installed-state runtime artifact validation failed - PE is not actually installed on persisted storage"
+        return 1
+    fi
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

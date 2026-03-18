@@ -59,19 +59,22 @@ preflight_validation() {
 # Validate console_password in pe.conf (T023a)
 validate_console_password() {
     log_bootstrap_step "console_password_validation" "starting"
-    
+
+    local console_pwd_line
+    console_pwd_line=$(grep -E '^[[:space:]]*("console_admin_password"|"puppet_enterprise::console_password"|console_password)[[:space:]]*=' "${PE_CONF_FILE}" | head -n 1 || true)
+
     # Check if console_password is present and non-empty
-    if ! grep -q '^[[:space:]]*console_password' "${PE_CONF_FILE}"; then
+    if [ -z "${console_pwd_line}" ]; then
         log_message ERROR "console_password not found in pe.conf"
         log_message ERROR "First-time PE installation requires console_password in pe.conf"
-        log_message ERROR "Add line to pe.conf: console_password=your_secure_password"
+        log_message ERROR "Add line to pe.conf: \"console_admin_password\"=your_secure_password"
         log_bootstrap_step "console_password_validation" "failure"
         return 1
     fi
-    
+
     # Extract console_password value (handle whitespace and quoted values)
     local console_pwd
-    console_pwd=$(grep '^[[:space:]]*console_password' "${PE_CONF_FILE}" | cut -d'=' -f2 | tr -d '[:space:]' | tr -d '"')
+    console_pwd=$(printf '%s\n' "${console_pwd_line}" | cut -d'=' -f2- | tr -d '[:space:]' | tr -d '"')
     
     if [ -z "$console_pwd" ]; then
         log_message ERROR "console_password in pe.conf is empty"
@@ -164,6 +167,35 @@ persist_install_completion() {
     return 0
 }
 
+# Run post-install Puppet agent convergence required by PE.
+run_post_install_agent_convergence() {
+    log_bootstrap_step "post_install_agent_convergence" "starting"
+
+    local run_number
+    local exit_code
+    for run_number in 1 2; do
+        log_message INFO "Running post-install puppet agent convergence pass ${run_number}/2"
+        set +e
+        /opt/puppetlabs/bin/puppet agent -t
+        exit_code=$?
+        set -e
+
+        case "${exit_code}" in
+            0|2)
+                log_message INFO "Post-install puppet agent run ${run_number}/2 completed with exit code ${exit_code}"
+                ;;
+            *)
+                log_message ERROR "Post-install puppet agent run ${run_number}/2 failed with exit code ${exit_code}"
+                log_bootstrap_step "post_install_agent_convergence" "failure"
+                return 1
+                ;;
+        esac
+    done
+
+    log_bootstrap_step "post_install_agent_convergence" "success"
+    return 0
+}
+
 # Remove installer artifacts after verification (T026a)
 cleanup_installer_artifacts() {
     log_bootstrap_step "cleanup_installer_artifacts" "starting"
@@ -246,13 +278,19 @@ main() {
         return 1
     fi
     
-    # Step 5: Persist successful completion (T026)
+    # Step 5: Run the required post-install puppet agent convergence.
+    if ! run_post_install_agent_convergence; then
+        handle_bootstrap_failure "post_install_agent_convergence" "Required puppet agent convergence failed"
+        return 1
+    fi
+
+    # Step 6: Persist successful completion (T026)
     if ! persist_install_completion; then
         handle_bootstrap_failure "persist_install_completion" "Could not write install-complete marker"
         return 1
     fi
     
-    # Step 6: Clean up installer (T026a)
+    # Step 7: Clean up installer (T026a)
     if ! cleanup_installer_artifacts; then
         handle_bootstrap_failure "cleanup_installer_artifacts" "Could not remove installer artifacts"
         return 1

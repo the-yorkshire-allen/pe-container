@@ -116,6 +116,9 @@ log_integrity_issue() {
         metadata_corrupt)
             log_message ERROR "Integrity check failed: Metadata unparseable (${details})"
             ;;
+        runtime_missing)
+            log_message ERROR "Integrity check failed: Installed runtime artifacts missing (${details})"
+            ;;
         *)
             log_message ERROR "Integrity check failed: ${issue_type} (${details})"
             ;;

@@ -2,6 +2,10 @@ version: '3.8'
 
 services:
   pe-primary:
+    dns_search:
+      - .
+    hostname: pe-primary
+    cgroup: host
     build:
       context: .
       dockerfile: container/Dockerfile
@@ -49,7 +53,7 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 4G
+          memory: 7G
         reservations:
           cpus: '1'
           memory: 1G

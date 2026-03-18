@@ -6,6 +6,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${script_dir}/scripts/lib/state.sh"
 source "${script_dir}/scripts/lib/logging.sh"
+source "${script_dir}/validate-runtime-state.sh"
 
 # Entrypoint command dispatcher
 dispatch_command() {
@@ -35,6 +36,21 @@ dispatch_command() {
 # Startup orchestration - classifies state and branches bootstrap vs restore (T031-T035)
 startup_orchestrator() {
     local state
+
+    if ! check_integrity; then
+        log_message ERROR "Runtime integrity validation failed before startup orchestration"
+        set_reset_required_state || true
+        log_message ERROR "Please run: docker exec CONTAINER /puppet/reset-runtime-state.sh && docker restart CONTAINER"
+        return 1
+    fi
+
+    if [ "$(get_lifecycle_state)" = "installed" ] && ! validate_installed_runtime_artifacts; then
+        log_message ERROR "Installed marker exists, but required PE runtime artifacts are missing"
+        set_reset_required_state || true
+        log_message ERROR "Please run: docker exec CONTAINER /puppet/reset-runtime-state.sh && docker restart CONTAINER"
+        return 1
+    fi
+
     state=$(get_lifecycle_state)
     
     log_message INFO "PE container startup - lifecycle state: ${state}"

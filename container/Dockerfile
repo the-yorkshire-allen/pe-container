@@ -35,8 +35,8 @@ RUN echo "PE_VERSION=${PE_VERSION}" > /puppet-staging/.build-metadata && \
 # Final runtime image
 FROM ${BASE_IMAGE}
 
-# Install systemd container support and a few runtime tools used by health/status flows.
-RUN dnf install -y epel-release procps-ng iproute && \
+# Install systemd container support and the runtime packages PE expects.
+RUN dnf install -y epel-release procps-ng iproute cronie glibc-langpack-en && \
     dnf clean all
 
 # Create directories for lifecycle scripts and persistent state
@@ -71,6 +71,8 @@ RUN chmod 0644 /etc/systemd/system/pe-container-bootstrap.service && \
 # Set environment for state management and systemd-in-container mode.
 ENV PE_STATE_DIR=/puppet/state
 ENV PE_INSTALLER_STAGING=/puppet/installer-staging
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 ENV container=docker
 
 # Run systemd as PID 1 so the PE installer and managed services can function.
