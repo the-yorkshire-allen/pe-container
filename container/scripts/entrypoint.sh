@@ -4,8 +4,8 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${script_dir}/lib/state.sh"
-source "${script_dir}/lib/logging.sh"
+source "${script_dir}/scripts/lib/state.sh"
+source "${script_dir}/scripts/lib/logging.sh"
 
 # Entrypoint command dispatcher
 dispatch_command() {
@@ -77,9 +77,14 @@ startup_orchestrator() {
             
             # T035: Post-install pe.conf drift is ignored (no reinstall triggered by config changes)
             log_message INFO "Note: Changes to pe.conf after install are not applied (version-locked persistence)"
+            if ! systemctl status >/dev/null 2>&1; then
+                log_message ERROR "PE persisted state exists, but this container is not running with systemd as PID 1"
+                log_message ERROR "PE services cannot be restored under the current init model"
+                log_message ERROR "Use a systemd-based container runtime to run the installed PE services"
+                return 1
+            fi
+
             log_message INFO "PE is running from persisted installed state"
-            
-            # TODO: Restore PE services from persisted state
             return 0
             ;;
         failed)

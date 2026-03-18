@@ -11,13 +11,14 @@ services:
     
     image: "pe-container:${PE_VERSION}"
     container_name: pe-primary
+    privileged: true
     
     # Standard PE service ports
     ports:
       - "8140:8140"  # Puppet Server
-      - "443:443"    # PE Console
-      - "8143:8143"  # PE Console HTTPS
-      - "4432:4432"  # PE Classifier
+      - "9443:443"   # PE Console (HTTPS)
+      - "4433:4433"  # PE Classifier
+      - "8142:8142"  # PE Orchestrator (PXP)
     
     # Persistence layer: operator-managed volumes
     volumes:
@@ -25,9 +26,15 @@ services:
       - pe-data:/opt/puppetlabs
       - pe-logs:/var/log/puppetlabs
       - pe-state:/puppet/state
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
       
-      # Optional: mount host  pe.conf (first-time setup)
-      # - ./pe.conf:/etc/puppetlabs/pe/pe.conf:ro
+      # Optional: mount host pe.conf from repo root (first-time setup)
+      - ../../pe.conf:/etc/puppetlabs/pe/pe.conf:ro
+
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
     
     # Environment variables
     environment:
@@ -42,7 +49,7 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 2G
+          memory: 4G
         reservations:
           cpus: '1'
           memory: 1G
@@ -66,7 +73,7 @@ volumes:
 
 # Usage:
 #   Provide PE_VERSION and PE_INSTALLER_TAR_PATH environment variables or in .env
-#   First-time setup: Place pe.conf at ./pe.conf or mount it via docker-compose override
-#   Start: docker-compose up -d
+#   First-time setup: Place pe.conf at ../../pe.conf (relative to this file) or mount via compose override
+#   Start: docker-compose up -d --no-build
 #   Reset: docker-compose exec pe-primary /puppet/reset-runtime-state.sh && docker-compose restart
 #   Logs: docker-compose logs -f pe-primary

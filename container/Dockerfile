@@ -3,23 +3,28 @@
 ARG BASE_IMAGE=almalinux:9
 ARG PE_VERSION
 ARG PE_INSTALLER_TAR_PATH
+ARG PE_INSTALLER_TAR_CONTEXT_PATH=container/assets/pe-installer/installer.tar.gz
 
 # Validate build inputs and prepare installer (build stage)
 FROM ${BASE_IMAGE} as build-validator
 
 ARG PE_VERSION
 ARG PE_INSTALLER_TAR_PATH
+ARG PE_INSTALLER_TAR_CONTEXT_PATH
 
 # Copy validation helpers
 COPY container/scripts/lib/state.sh /tmp/state.sh
+
+# Copy installer archive from build context into image-local path for validation/extraction
+COPY ${PE_INSTALLER_TAR_CONTEXT_PATH} /tmp/pe-installer.tar.gz
 RUN source /tmp/state.sh && \
-    validate_installer_tar_at_build_time "${PE_INSTALLER_TAR_PATH}" "${PE_VERSION}" || exit 1 && \
-    verify_installer_version_match "${PE_INSTALLER_TAR_PATH}" "${PE_VERSION}" && \
+    validate_installer_tar_at_build_time "/tmp/pe-installer.tar.gz" "${PE_VERSION}" || exit 1 && \
+    verify_installer_version_match "/tmp/pe-installer.tar.gz" "${PE_VERSION}" && \
     echo "Build input validation: PASS"
 
 # Extract installer to staging location
 RUN mkdir -p /puppet-staging && \
-    tar -xzf "${PE_INSTALLER_TAR_PATH}" -C /puppet-staging && \
+    tar -xzf "/tmp/pe-installer.tar.gz" -C /puppet-staging && \
     echo "Installer extraction: SUCCESS to /puppet-staging"
 
 #  Record build metadata for runtime use
@@ -30,8 +35,9 @@ RUN echo "PE_VERSION=${PE_VERSION}" > /puppet-staging/.build-metadata && \
 # Final runtime image
 FROM ${BASE_IMAGE}
 
-# Install tini as PID 1 (handles signals and orphaned processes)
-RUN dnf install -y tini && dnf clean all
+# Install systemd container support and a few runtime tools used by health/status flows.
+RUN dnf install -y epel-release procps-ng iproute && \
+    dnf clean all
 
 # Create directories for lifecycle scripts and persistent state
 RUN mkdir -p /puppet/scripts/lib /puppet/state /puppet/installer-staging
@@ -56,14 +62,21 @@ RUN chmod +x /puppet/entrypoint.sh /puppet/healthcheck.sh \
 COPY container/scripts/bootstrap-pe.sh /puppet/bootstrap-pe.sh
 RUN chmod +x /puppet/bootstrap-pe.sh
 
+# Install bootstrap orchestration as a systemd unit so PE bootstrap/restore runs at container boot.
+COPY container/systemd/pe-container-bootstrap.service /etc/systemd/system/pe-container-bootstrap.service
+RUN chmod 0644 /etc/systemd/system/pe-container-bootstrap.service && \
+    systemctl enable pe-container-bootstrap.service
 
-# Set environment for state management
+
+# Set environment for state management and systemd-in-container mode.
 ENV PE_STATE_DIR=/puppet/state
 ENV PE_INSTALLER_STAGING=/puppet/installer-staging
+ENV container=docker
 
-# Use tini as PID 1 to forward signals
-ENTRYPOINT ["tini", "--", "/puppet/entrypoint.sh"]
-CMD ["start"]
+# Run systemd as PID 1 so the PE installer and managed services can function.
+STOPSIGNAL SIGRTMIN+3
+VOLUME ["/sys/fs/cgroup"]
+CMD ["/usr/sbin/init"]
 
 # Docker healthcheck configuration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

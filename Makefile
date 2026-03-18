@@ -5,6 +5,7 @@
 
 PE_VERSION ?= 
 PE_INSTALLER_TAR_PATH ?= 
+PE_INSTALLER_CONTEXT_PATH ?= container/assets/pe-installer/installer.tar.gz
 CONTAINER_NAME ?= pe-primary
 IMAGE_NAME ?= pe-container
 
@@ -39,14 +40,27 @@ build:
 		/*) ;; \
 		*) echo "ERROR: PE_INSTALLER_TAR_PATH must be an absolute path (start with /): $(PE_INSTALLER_TAR_PATH)"; exit 1 ;; \
 	esac
+	@mkdir -p "$(dir $(PE_INSTALLER_CONTEXT_PATH))"
+	@echo "[Build] Staging installer into Docker build context: $(PE_INSTALLER_CONTEXT_PATH)"
+	@cp -f "$(PE_INSTALLER_TAR_PATH)" "$(PE_INSTALLER_CONTEXT_PATH)"
 	@echo "[Build] Starting Docker build with PE_VERSION=$(PE_VERSION)..."
+	@set -e; \
 	docker build \
 		--build-arg PE_VERSION="$(PE_VERSION)" \
 		--build-arg PE_INSTALLER_TAR_PATH="$(PE_INSTALLER_TAR_PATH)" \
+		--build-arg PE_INSTALLER_TAR_CONTEXT_PATH="$(PE_INSTALLER_CONTEXT_PATH)" \
 		--tag "$(IMAGE_NAME):$(PE_VERSION)" \
 		--tag "$(IMAGE_NAME):latest" \
 		--file container/Dockerfile \
-		. && echo "[Build] SUCCESS: Image tagged as $(IMAGE_NAME):$(PE_VERSION)"
+		.; \
+	status=$$?; \
+	rm -f "$(PE_INSTALLER_CONTEXT_PATH)"; \
+	if [ $$status -eq 0 ]; then \
+		echo "[Build] SUCCESS: Image tagged as $(IMAGE_NAME):$(PE_VERSION)"; \
+	else \
+		echo "[Build] FAILED"; \
+		exit $$status; \
+	fi
 
 run:
 	docker run \

@@ -4,8 +4,8 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${script_dir}/lib/state.sh"
-source "${script_dir}/lib/logging.sh"
+source "${script_dir}/scripts/lib/state.sh"
+source "${script_dir}/scripts/lib/logging.sh"
 
 # Safe reset of all lifecycle markers and metadata
 reset_runtime_state() {

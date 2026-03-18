@@ -3,8 +3,9 @@
 
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/state.sh"
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/logging.sh"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/scripts/lib/state.sh"
+source "${script_dir}/scripts/lib/logging.sh"
 
 # Configured persistence targets (override via environment if needed)
 PE_PERSIST_PATHS=(

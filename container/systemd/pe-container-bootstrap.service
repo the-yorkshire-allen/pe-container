@@ -1,0 +1,15 @@
+[Unit]
+Description=Puppet Enterprise container bootstrap and restore orchestrator
+Wants=network-online.target
+After=network-online.target local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/puppet/entrypoint.sh start
+TimeoutStartSec=0
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

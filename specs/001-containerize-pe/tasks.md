@@ -17,12 +17,12 @@
 
 **Purpose**: Initialize container project structure and baseline tooling.
 
-- [ ] T001 Create repository placeholders for container and tests roots in container/.gitkeep and tests/.gitkeep
-- [ ] T002 Create baseline Docker image scaffold with lifecycle script copy points in container/Dockerfile
-- [ ] T003 [P] Add container build exclusions in container/.dockerignore
-- [ ] T004 [P] Add operator command wrappers for build, run, restart-check, and reset in Makefile
-- [ ] T005 [P] Configure shell lint defaults for lifecycle scripts in .shellcheckrc
-- [ ] T006 [P] Add installer artifact handling and local path usage notes in container/assets/examples/README.md
+- [x] T001 Create repository placeholders for container and tests roots in container/.gitkeep and tests/.gitkeep
+- [x] T002 Create baseline Docker image scaffold with lifecycle script copy points in container/Dockerfile
+- [x] T003 [P] Add container build exclusions in container/.dockerignore
+- [x] T004 [P] Add operator command wrappers for build, run, restart-check, and reset in Makefile
+- [x] T005 [P] Configure shell lint defaults for lifecycle scripts in .shellcheckrc
+- [x] T006 [P] Add installer artifact handling and local path usage notes in container/assets/examples/README.md
 
 ---
 
@@ -32,15 +32,15 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 Define lifecycle constants, marker paths, and state transition helpers in container/scripts/lib/state.sh
-- [ ] T008 [P] Implement structured logging/status helper functions in container/scripts/lib/logging.sh
-- [ ] T009 Implement configured persistence path validation and writability checks in container/scripts/validate-runtime-state.sh
-- [ ] T010 Implement entrypoint command dispatcher (`start`, `healthcheck`, `reset-runtime-state`) in container/scripts/entrypoint.sh
-- [ ] T011 [P] Implement startup health outcome mapping (including `installing`, `failed`, `restored`, and intervention-required) in container/scripts/healthcheck.sh
-- [ ] T012 [P] Add `/status/v1/simple` probe helper for startup and smoke checks in container/scripts/lib/status-probe.sh
-- [ ] T013 Implement explicit runtime reset operation for lifecycle markers in container/scripts/reset-runtime-state.sh
-- [ ] T014 Wire PID 1 init, startup command, and healthcheck invocation in container/Dockerfile
-- [ ] T015 Add baseline runtime compose profile with persistence and config mounts in container/compose/docker-compose.example.yml
+- [x] T007 Define lifecycle constants, marker paths, and state transition helpers in container/scripts/lib/state.sh
+- [x] T008 [P] Implement structured logging/status helper functions in container/scripts/lib/logging.sh
+- [x] T009 Implement configured persistence path validation and writability checks in container/scripts/validate-runtime-state.sh
+- [x] T010 Implement entrypoint command dispatcher (`start`, `healthcheck`, `reset-runtime-state`) in container/scripts/entrypoint.sh
+- [x] T011 [P] Implement startup health outcome mapping (including `installing`, `failed`, `restored`, and intervention-required) in container/scripts/healthcheck.sh
+- [x] T012 [P] Add `/status/v1/simple` probe helper for startup and smoke checks in container/scripts/lib/status-probe.sh
+- [x] T013 Implement explicit runtime reset operation for lifecycle markers in container/scripts/reset-runtime-state.sh
+- [x] T014 Wire PID 1 init, startup command, and healthcheck invocation in container/Dockerfile
+- [x] T015 Add baseline runtime compose profile with persistence and config mounts in container/compose/docker-compose.example.yml
 
 **Checkpoint**: Foundation ready; user story implementation can begin.
 
@@ -54,16 +54,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement Docker build arguments (`PE_VERSION`, `PE_INSTALLER_TAR_PATH`) and input guardrails in container/Dockerfile
-- [ ] T017 [US1] Add build-time installer path validation helper logic in container/scripts/lib/state.sh
-- [ ] T017a [US1] Enforce absolute-path-only validation for `PE_INSTALLER_TAR_PATH` in container/scripts/lib/state.sh
-- [ ] T018 [US1] Implement build wrapper command enforcing required input args in Makefile
-- [ ] T018a [US1] Implement installer tar.gz extraction into container-local staging path during image build in container/Dockerfile
-- [ ] T019 [P] [US1] Add build contract examples and required input documentation in specs/001-containerize-pe/contracts/build-interface.md
-- [ ] T019a [US1] Implement mandatory installer artifact/version identity verification during build in container/scripts/lib/state.sh
-- [ ] T020 [US1] Persist image/version build metadata for runtime compatibility checks in container/scripts/lib/state.sh
-- [ ] T021 [P] [US1] Document local-absolute-path installer build workflow in container/README.md
-- [ ] T022 [US1] Add quickstart build validation steps for valid and invalid inputs in specs/001-containerize-pe/quickstart.md
+- [x] T016 [US1] Implement Docker build arguments (`PE_VERSION`, `PE_INSTALLER_TAR_PATH`) and input guardrails in container/Dockerfile
+- [x] T017 [US1] Add build-time installer path validation helper logic in container/scripts/lib/state.sh
+- [x] T017a [US1] Enforce absolute-path-only validation for `PE_INSTALLER_TAR_PATH` in container/scripts/lib/state.sh
+- [x] T018 [US1] Implement build wrapper command enforcing required input args in Makefile
+- [x] T018a [US1] Implement installer tar.gz extraction into container-local staging path during image build in container/Dockerfile
+- [x] T019 [P] [US1] Add build contract examples and required input documentation in specs/001-containerize-pe/contracts/build-interface.md
+- [x] T019a [US1] Implement mandatory installer artifact/version identity verification during build in container/scripts/lib/state.sh
+- [x] T020 [US1] Persist image/version build metadata for runtime compatibility checks in container/scripts/lib/state.sh
+- [x] T021 [P] [US1] Document local-absolute-path installer build workflow in container/README.md
+- [x] T022 [US1] Add quickstart build validation steps for valid and invalid inputs in specs/001-containerize-pe/quickstart.md
 
 **Checkpoint**: Build pipeline is independently usable and validates required inputs.
 

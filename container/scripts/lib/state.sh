@@ -171,8 +171,24 @@ validate_installer_tar_at_build_time() {
 
 # Verify installer contains expected version (T019a - artifact/version identity check)
 verify_installer_version_match() {
-    local tar_path="$1"
-    local expected_version="$2"
+    local tar_path="${1:-}"
+    local expected_version="${2:-}"
+
+    # Runtime mode: no args passed from entrypoint; compare persisted metadata.
+    if [ -z "$tar_path" ] || [ -z "$expected_version" ]; then
+        local persisted_version
+        local image_version
+        persisted_version="$(get_persisted_version)"
+        image_version="$(get_persisted_image_version)"
+
+        if [ -n "$persisted_version" ] && [ -n "$image_version" ] && [ "$persisted_version" != "$image_version" ]; then
+            echo "ERROR: Persisted PE version ($persisted_version) does not match image version ($image_version)" >&2
+            return 1
+        fi
+
+        # If metadata is missing, do not hard-fail here; other integrity checks handle it.
+        return 0
+    fi
     
     # Extract version metadata from inside the tar without full extraction
     # Look for puppet-enterprise/VERSION or similar marker

@@ -5,12 +5,27 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${script_dir}/lib/state.sh"
-source "${script_dir}/lib/logging.sh"
+source "${script_dir}/scripts/lib/state.sh"
+source "${script_dir}/scripts/lib/logging.sh"
 
 # PE configuration location (typically mounted as volume)
 PE_CONF_FILE="${PE_CONF_FILE:-/etc/puppetlabs/pe/pe.conf}"
 PE_LICENSE_FILE="${PE_LICENSE_FILE:-/etc/puppetlabs/license.txt}"
+
+require_systemd_runtime() {
+    if ! systemctl status >/dev/null 2>&1; then
+        log_message ERROR "PE installation requires systemd service management, but systemd is not running as PID 1 in this container"
+        log_message ERROR "Current container model uses a shell/tini entrypoint, which cannot operate PE system services"
+        log_message ERROR "A systemd-based container runtime is required for real PE installation and restore"
+        return 1
+    fi
+
+    return 0
+}
+
+find_installer_root() {
+    find "${PE_INSTALLER_STAGING}" -maxdepth 1 -mindepth 1 -type d -name 'puppet-enterprise-*' | head -1
+}
 
 # Preflight validation - check pe.conf and licensing (T023)
 preflight_validation() {
@@ -97,13 +112,29 @@ execute_installer() {
         log_bootstrap_step "execute_installer" "failure"
         return 1
     fi
+
+    if ! require_systemd_runtime; then
+        log_bootstrap_step "execute_installer" "failure"
+        return 1
+    fi
+
+    local installer_root
+    installer_root="$(find_installer_root)"
+
+    if [ -z "${installer_root}" ] || [ ! -x "${installer_root}/puppet-enterprise-installer" ]; then
+        log_message ERROR "Could not find executable puppet-enterprise-installer under ${PE_INSTALLER_STAGING}"
+        log_bootstrap_step "execute_installer" "failure"
+        return 1
+    fi
     
-    log_message INFO "Found installer content in ${PE_INSTALLER_STAGING}"
-    
-    # For now, placeholder for actual PE installer execution
-    # In production, this would run the PE installer script
-    # TODO: Implement actual pe-installer execution or puppet agent run
-    log_message INFO "[Placeholder] Would run: cd ${PE_INSTALLER_STAGING} && ./puppet-enterprise-installer -c ${PE_CONF_FILE}"
+    log_message INFO "Found installer content in ${installer_root}"
+    log_message INFO "Running PE installer in non-interactive mode"
+
+    if ! (cd "${installer_root}" && ./puppet-enterprise-installer -c "${PE_CONF_FILE}" -y); then
+        log_message ERROR "puppet-enterprise-installer returned a non-zero exit code"
+        log_bootstrap_step "execute_installer" "failure"
+        return 1
+    fi
     
     log_bootstrap_step "execute_installer" "success"
     return 0

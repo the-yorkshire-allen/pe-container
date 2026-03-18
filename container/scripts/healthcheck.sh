@@ -4,9 +4,9 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${script_dir}/lib/state.sh"
-source "${script_dir}/lib/logging.sh"
-source "${script_dir}/lib/status-probe.sh"
+source "${script_dir}/scripts/lib/state.sh"
+source "${script_dir}/scripts/lib/logging.sh"
+source "${script_dir}/scripts/lib/status-probe.sh"
 
 # Emit startup outcome health status
 healthcheck() {
@@ -21,8 +21,14 @@ healthcheck() {
             exit_code=2  # Starting state, allow grace period
             ;;
         installed)
-            log_message INFO "[Healthcheck] Installation complete - services running"
-            exit_code=0  # Healthy
+            if command -v /opt/puppetlabs/bin/puppet >/dev/null 2>&1 && \
+               /opt/puppetlabs/bin/puppet infrastructure status --log_level=err >/dev/null 2>&1; then
+                log_message INFO "[Healthcheck] Installation complete - PE infrastructure is healthy"
+                exit_code=0  # Healthy
+            else
+                log_message ERROR "[Healthcheck] Installed state detected but PE infrastructure is not yet healthy"
+                exit_code=1
+            fi
             ;;
         failed)
             log_message ERROR "[Healthcheck] Installation FAILED - manual intervention required"

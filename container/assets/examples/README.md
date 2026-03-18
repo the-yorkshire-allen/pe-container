@@ -17,10 +17,11 @@ The container build process accepts the Puppet Enterprise installer as a local f
 
 ### Build Lifecycle
 
-1. **Extract**: The build process extracts the installer archive to a staging location inside the container (`/puppet/installer-staging/`).
-2. **Validate**: Metadata verification ensures the contents match the declared version.
-3. **Install**: The installation script runs inside the container on first boot.
-4. **Cleanup**: After verified installation completion, installer artifacts are removed from the runtime filesystem to reduce image bloat and operator confusion.
+1. **Stage into Build Context**: `make build` copies the installer tar.gz from `PE_INSTALLER_TAR_PATH` to `container/assets/pe-installer/installer.tar.gz` so Docker build can access it.
+2. **Extract**: The build process extracts the staged installer archive to a staging location inside the container (`/puppet/installer-staging/`).
+3. **Validate**: Metadata verification ensures the contents match the declared version.
+4. **Install**: The installation script runs inside the container on first boot.
+5. **Cleanup**: After verified installation completion, installer artifacts are removed from the runtime filesystem to reduce image bloat and operator confusion.
 
 ### Example Build Command
 
@@ -38,7 +39,7 @@ make build PE_VERSION="${PE_VERSION}" PE_INSTALLER_TAR_PATH="${PE_INSTALLER_PATH
 ### Troubleshooting Build Input Errors
 
 - **"PE_INSTALLER_TAR_PATH is not absolute"**: Provide a path starting with `/`.
-- **"File not found"**: Verify the installer path is correct and accessible to Docker (consider host filesystem permissions).
+- **"File not found"**: Verify the installer path is correct and readable on the host. Docker `RUN` steps cannot directly access arbitrary host absolute paths, so `make build` stages the file into build context first.
 - **"Version mismatch"**: Ensure `PE_VERSION` matches the version string inside the tar.gz archive.
 
 ## Notes
