@@ -36,7 +36,7 @@
 - [ ] T008 [P] Implement structured logging/status helper functions in container/scripts/lib/logging.sh
 - [ ] T009 Implement configured persistence path validation and writability checks in container/scripts/validate-runtime-state.sh
 - [ ] T010 Implement entrypoint command dispatcher (`start`, `healthcheck`, `reset-runtime-state`) in container/scripts/entrypoint.sh
-- [ ] T011 [P] Implement startup health outcome mapping in container/scripts/healthcheck.sh
+- [ ] T011 [P] Implement startup health outcome mapping (including `installing`, `failed`, `restored`, and intervention-required) in container/scripts/healthcheck.sh
 - [ ] T012 [P] Add `/status/v1/simple` probe helper for startup and smoke checks in container/scripts/lib/status-probe.sh
 - [ ] T013 Implement explicit runtime reset operation for lifecycle markers in container/scripts/reset-runtime-state.sh
 - [ ] T014 Wire PID 1 init, startup command, and healthcheck invocation in container/Dockerfile
@@ -100,12 +100,14 @@
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Implement restart state classifier (`installed`, `failed`, `reset-required`, `uninitialized`) in container/scripts/validate-runtime-state.sh
+- [ ] T031 [US3] Implement restart state classifier (`installed`, `installing`, `failed`, `reset-required`, `uninitialized`) in container/scripts/validate-runtime-state.sh
+- [ ] T031a [US3] Implement explicit persisted-state integrity checks (marker parseability, version metadata format/compatibility, required path presence/writability) in container/scripts/validate-runtime-state.sh
 - [ ] T032 [US3] Enforce persisted-state version marker match against image metadata in container/scripts/validate-runtime-state.sh
 - [ ] T033 [US3] Block auto-retry after failed bootstrap until explicit reset, including repeated agent runs, in container/scripts/entrypoint.sh
 - [ ] T034 [US3] Implement restore path that skips installer on valid installed state in container/scripts/entrypoint.sh
 - [ ] T035 [P] [US3] Implement post-install `pe.conf` drift ignore logic in container/scripts/entrypoint.sh
-- [ ] T036 [US3] Implement intervention-required startup messaging categories in container/scripts/lib/logging.sh
+- [ ] T036 [US3] Implement operator-visible startup outcome messaging categories (including installing, failed, restored, and intervention-required) in container/scripts/lib/logging.sh
+- [ ] T036a [US3] Implement node continuity signal exposure (for example connected-nodes check-in status/timestamp) in startup outcome messaging and/or persistent metadata for operator verification in container/scripts/lib/logging.sh
 - [ ] T037 [US3] Update runtime contract for restart, mismatch, and reset-required behavior in specs/001-containerize-pe/contracts/container-runtime.md
 - [ ] T038 [US3] Add restart and blocked-state smoke validation procedures in specs/001-containerize-pe/quickstart.md
 
@@ -123,6 +125,7 @@
 
 - [ ] T039 [US4] Add node-simulation compose profile for primary and connected node workflow in container/compose/docker-compose.node-example.yml
 - [ ] T040 [US4] Add connected-node onboarding and continuity runbook in container/docs/connected-nodes.md
+- [ ] T040a [US4] Add restart-time continuity evidence capture and comparison procedure for previously connected nodes in specs/001-containerize-pe/quickstart.md
 - [ ] T041 [P] [US4] Add explicit in-scope/out-of-scope boundary documentation in container/docs/scope-boundaries.md
 - [ ] T042 [US4] Add operator quick-reference commands for connected-node flow in container/README.md
 - [ ] T043 [US4] Align runtime contract scope language for connected-node boundaries in specs/001-containerize-pe/contracts/container-runtime.md
@@ -214,7 +217,7 @@ Task T032: Enforce version marker match in container/scripts/validate-runtime-st
 Task T034: Implement restore path in container/scripts/entrypoint.sh
 
 # Parallel track B (operator visibility)
-Task T036: Add intervention-required messaging in container/scripts/lib/logging.sh
+Task T036: Add operator-visible startup outcome messaging in container/scripts/lib/logging.sh
 Task T038: Add restart blocked-state validation in specs/001-containerize-pe/quickstart.md
 ```
 
