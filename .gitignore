@@ -41,4 +41,4 @@ temp/
 # Project-specific
 container/.build/
 tests/artifacts/
-pe.conf
+./secrets/
