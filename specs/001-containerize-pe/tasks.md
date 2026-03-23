@@ -40,7 +40,7 @@
 - [x] T012 [P] Add `/status/v1/simple` probe helper for startup and smoke checks in container/scripts/lib/status-probe.sh
 - [x] T013 Implement explicit runtime reset operation for lifecycle markers in container/scripts/reset-runtime-state.sh
 - [x] T014 Wire PID 1 init, startup command, and healthcheck invocation in container/Dockerfile
-- [x] T015 Add baseline runtime compose profile with persistence and config mounts in container/compose/docker-compose.example.yml
+- [x] T015 Add baseline runtime compose profile with persistence and config mounts in container/compose/docker-compose.pe-primary.yml
 
 **Checkpoint**: Foundation ready; user story implementation can begin.
 
@@ -123,7 +123,7 @@
 
 ### Implementation for User Story 4
 
-- [x] T039 [US4] Add node-simulation compose profile for primary and connected node workflow in container/compose/docker-compose.node-example.yml
+- [x] T039 [US4] Add node-simulation compose profile for primary and connected node workflow in container/compose/docker-compose.connected-nodes.yml
 - [x] T040 [US4] Add connected-node onboarding and continuity runbook in container/docs/connected-nodes.md
 - [x] T040a [US4] Add restart-time continuity evidence capture and comparison procedure for previously connected nodes in specs/001-containerize-pe/quickstart.md
 - [x] T041 [P] [US4] Add explicit in-scope/out-of-scope boundary documentation in container/docs/scope-boundaries.md
@@ -225,7 +225,7 @@ Task T038: Add restart blocked-state validation in specs/001-containerize-pe/qui
 
 ```bash
 # Parallel track A (runtime examples)
-Task T039: Add node example compose profile in container/compose/docker-compose.node-example.yml
+Task T039: Add node example compose profile in container/compose/docker-compose.connected-nodes.yml
 Task T040: Add connected-node runbook in container/docs/connected-nodes.md
 
 # Parallel track B (scope boundaries)

@@ -5,7 +5,7 @@
 version: '3.8'
 
 services:
-  # PE Primary Server (from container/compose/docker-compose.example.yml)
+  # PE Primary Server (from container/compose/docker-compose.pe-primary.yml)
   pe-primary:
     build:
       context: ..
@@ -28,11 +28,13 @@ services:
       - pe-data:/opt/puppetlabs
       - pe-logs:/var/log/puppetlabs
       - pe-state:/puppet/state
-      # Mount pe.conf read-only
-      - ./shared/pe.conf:/etc/puppetlabs/pe/pe.conf:ro
+      - ${R10K_PRIVATE_KEY_SOURCE:-../../secrets/r10k-deploy-key}:${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}:ro
+      # Mount pe.conf read-only (override with PE_CONF_PATH)
+      - ${PE_CONF_PATH:-../../config_examples/pe-primary.conf}:/etc/puppetlabs/pe/pe.conf:ro
     environment:
       - PE_CONF_FILE=/etc/puppetlabs/pe/pe.conf
       - PE_STATE_DIR=/puppet/state
+      - R10K_PRIVATE_KEY_PATH=${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}
     healthcheck:
       test: ["/bin/bash", "-c", "/puppet/healthcheck.sh"]
       interval: 30s

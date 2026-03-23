@@ -16,15 +16,15 @@ Maps every functional requirement from `spec.md` to the implementation files and
 | FR-004 | Installation completion recorded; prevents automatic reinstall | `container/scripts/bootstrap-pe.sh` (`persist_install_completion`), `container/scripts/lib/state.sh` (`set_installed_state`) | T026 |
 | FR-005 | Subsequent launches restore from persisted state | `container/scripts/entrypoint.sh` (`startup_orchestrator`, `installed` branch) | T034 |
 | FR-005a | Post-install `pe.conf` changes do not trigger reinstall | `container/scripts/entrypoint.sh` (`installed` branch notes drift ignore) | T035 |
-| FR-006 | PE config, data, logs persisted across restart/reboot | `container/compose/docker-compose.example.yml` (volumes), `container/scripts/validate-runtime-state.sh` (`validate_persistence_paths`) | T009, T015 |
+| FR-006 | PE config, data, logs persisted across restart/reboot | `container/compose/docker-compose.pe-primary.yml` (volumes), `container/scripts/validate-runtime-state.sh` (`validate_persistence_paths`) | T009, T015 |
 | FR-007 | Validate presence and integrity of persisted state at startup | `container/scripts/validate-runtime-state.sh` (`check_integrity`, `validate_markers`, `validate_marker_parseability`, `validate_version_metadata`) | T031, T031a |
 | FR-007a | Version mismatch between persisted state and image blocks startup | `container/scripts/entrypoint.sh` (`verify_installer_version_match` call in restore path), `container/scripts/validate-runtime-state.sh` | T032 |
 | FR-008 | Failed install → non-healthy state + actionable guidance | `container/scripts/bootstrap-pe.sh` (`handle_bootstrap_failure`), `container/scripts/lib/state.sh` (`set_failed_state`) | T027 |
 | FR-008a | Partial state after failure → blocked until explicit reset | `container/scripts/entrypoint.sh` (`failed` branch, no auto-retry) | T033 |
 | FR-008b | Repeated agent runs after failure do NOT trigger retry | `container/scripts/entrypoint.sh` (`failed` branch always exits 1) | T033 |
-| FR-009 | Manage PE instance and connected nodes | `container/docs/connected-nodes.md`, `container/compose/docker-compose.node-example.yml` | T039, T040 |
+| FR-009 | Manage PE instance and connected nodes | `container/docs/connected-nodes.md`, `container/compose/docker-compose.connected-nodes.yml` | T039, T040 |
 | FR-010 | Scope bounded to PE instance + connected nodes; no external infra | `container/docs/scope-boundaries.md`, `specs/001-containerize-pe/contracts/container-runtime.md` | T041, T043 |
-| FR-011 | Persisted state retains connected node manageability across restart | `container/compose/docker-compose.example.yml` (volumes include `/etc/puppetlabs`), `container/scripts/validate-runtime-state.sh` | T009, T015 |
+| FR-011 | Persisted state retains connected node manageability across restart | `container/compose/docker-compose.pe-primary.yml` (volumes include `/etc/puppetlabs`), `container/scripts/validate-runtime-state.sh` | T009, T015 |
 | FR-011a | Operator-visible node continuity signal on restart | `container/scripts/lib/logging.sh` (`log_node_continuity_signal`), `container/scripts/entrypoint.sh` | T036a |
 | FR-012 | Startup outcome is distinguishable: installing / failed / restored / intervention-required | `container/scripts/lib/logging.sh` (`startup_outcome_message`), `container/scripts/entrypoint.sh` | T036 |
 | FR-013 | Operator-controlled reset path | `container/scripts/reset-runtime-state.sh` | T013 |

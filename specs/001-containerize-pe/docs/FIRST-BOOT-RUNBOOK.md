@@ -78,8 +78,8 @@ docker run -d \
 
 Using Docker Compose:
 ```bash
-# Edit compose/docker-compose.example.yml with your paths and settings
-docker-compose -f compose/docker-compose.example.yml up -d
+# Edit compose/docker-compose.pe-primary.yml with your paths and settings
+docker-compose -f compose/docker-compose.pe-primary.yml up -d
 ```
 
 ### Step 3: Monitor First-Boot Bootstrap

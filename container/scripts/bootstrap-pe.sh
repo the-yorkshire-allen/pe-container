@@ -11,6 +11,7 @@ source "${script_dir}/scripts/lib/logging.sh"
 # PE configuration location (typically mounted as volume)
 PE_CONF_FILE="${PE_CONF_FILE:-/etc/puppetlabs/pe/pe.conf}"
 PE_LICENSE_FILE="${PE_LICENSE_FILE:-/etc/puppetlabs/license.txt}"
+R10K_PRIVATE_KEY_PATH="${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}"
 
 require_systemd_runtime() {
     if ! systemctl status >/dev/null 2>&1; then
@@ -85,6 +86,58 @@ validate_console_password() {
     
     log_message INFO "console_password validation: OK"
     log_bootstrap_step "console_password_validation" "success"
+    return 0
+}
+
+validate_r10k_private_key() {
+    log_bootstrap_step "r10k_private_key_validation" "starting"
+
+    local key_line
+    key_line=$(grep -E '^[[:space:]]*("puppet_enterprise::profile::master::r10k_private_key"|r10k_private_key)[[:space:]]*=' "${PE_CONF_FILE}" | head -n 1 || true)
+
+    # Key validation is only required when r10k_private_key is configured in pe.conf.
+    if [ -z "${key_line}" ]; then
+        log_message INFO "r10k_private_key not configured in pe.conf; skipping private key validation"
+        log_bootstrap_step "r10k_private_key_validation" "success"
+        return 0
+    fi
+
+    local configured_key_path
+    configured_key_path=$(printf '%s\n' "${key_line}" | cut -d'=' -f2- | tr -d '[:space:]' | tr -d '"')
+
+    if [ -z "${configured_key_path}" ]; then
+        log_message ERROR "r10k_private_key is configured but empty in pe.conf"
+        log_bootstrap_step "r10k_private_key_validation" "failure"
+        return 1
+    fi
+
+    if [ "${configured_key_path}" != "${R10K_PRIVATE_KEY_PATH}" ]; then
+        log_message WARN "R10K_PRIVATE_KEY_PATH (${R10K_PRIVATE_KEY_PATH}) does not match pe.conf r10k_private_key (${configured_key_path})"
+        log_message WARN "Bootstrap validation will use pe.conf path: ${configured_key_path}"
+    fi
+
+    if [ ! -f "${configured_key_path}" ]; then
+        log_message ERROR "r10k private key file not found at ${configured_key_path}"
+        log_message ERROR "Mount your key into the container (default: /etc/puppetlabs/keys/r10k-deploy-key)"
+        log_bootstrap_step "r10k_private_key_validation" "failure"
+        return 1
+    fi
+
+    if [ ! -r "${configured_key_path}" ]; then
+        log_message ERROR "r10k private key file is not readable at ${configured_key_path}"
+        log_bootstrap_step "r10k_private_key_validation" "failure"
+        return 1
+    fi
+
+    if find "${configured_key_path}" -maxdepth 0 -perm /077 -print -quit >/dev/null 2>&1; then
+        log_message ERROR "r10k private key permissions are too open at ${configured_key_path}"
+        log_message ERROR "Set permissions to 600 (or stricter) before startup"
+        log_bootstrap_step "r10k_private_key_validation" "failure"
+        return 1
+    fi
+
+    log_message INFO "r10k private key validation: OK (${configured_key_path})"
+    log_bootstrap_step "r10k_private_key_validation" "success"
     return 0
 }
 
@@ -263,6 +316,12 @@ main() {
     # Step 2: Validate console password (T023a)
     if ! validate_console_password; then
         handle_bootstrap_failure "console_password_validation" "console_password missing or empty in pe.conf"
+        return 1
+    fi
+
+    # Step 2b: Validate r10k private key when configured.
+    if ! validate_r10k_private_key; then
+        handle_bootstrap_failure "r10k_private_key_validation" "r10k private key missing, unreadable, or has unsafe permissions"
         return 1
     fi
     

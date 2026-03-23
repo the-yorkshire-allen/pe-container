@@ -68,8 +68,8 @@ container/
 │       ├── logging.sh
 │       └── status-probe.sh
 └── compose/
-    ├── docker-compose.example.yml
-    └── docker-compose.node-example.yml
+  ├── docker-compose.pe-primary.yml
+  └── docker-compose.connected-nodes.yml
 
 tests/
 ├── contract/

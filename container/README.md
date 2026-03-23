@@ -67,8 +67,46 @@ ERROR: PE_INSTALLER_TAR_PATH file not found: /nonexistent/installer.tar.gz
 After build completes, run with:
 
 ```bash
-docker-compose -f container/compose/docker-compose.example.yml up -d
+docker-compose -f container/compose/docker-compose.pe-primary.yml up -d
 ```
+
+Default example configs now live in `config_examples/`:
+
+- `config_examples/pe-primary.conf`
+- `config_examples/pe-code-manager-rbac.conf`
+
+For Code Manager with a private deploy key:
+
+1. Create a host secrets directory and copy your key:
+
+```bash
+mkdir -p ./secrets
+cp /path/to/your/private_key ./secrets/r10k-deploy-key
+chmod 600 ./secrets/r10k-deploy-key
+```
+
+2. Use the Code Manager config and map the host key file into `/etc/puppetlabs`:
+
+```bash
+PE_VERSION=2023.8.8 \
+R10K_PRIVATE_KEY_SOURCE="$PWD/secrets/r10k-deploy-key" \
+PE_CONF_PATH="$PWD/config_examples/pe-code-manager-rbac.conf" \
+docker-compose -f container/compose/docker-compose.pe-primary.yml up -d --no-build
+```
+
+If you want to choose a specific `pe.conf`, set `PE_CONF_PATH` inline:
+
+```bash
+PE_CONF_PATH="$PWD/config_examples/pe-primary.conf" docker-compose -f container/compose/docker-compose.pe-primary.yml up -d --no-build
+```
+
+For Code Manager against the sample RBAC control repo config:
+
+```bash
+PE_CONF_PATH="$PWD/config_examples/pe-code-manager-rbac.conf" docker-compose -f container/compose/docker-compose.pe-primary.yml up -d --no-build
+```
+
+Compose defaults `R10K_PRIVATE_KEY_PATH` to `/etc/puppetlabs/keys/r10k-deploy-key` in-container.
 
 Or manually:
 
@@ -169,7 +207,7 @@ diff /tmp/certs-before.txt /tmp/certs-after.txt  # Expect: empty diff
 ### Node Example Compose Profile
 ```bash
 # Start PE primary + two agent containers for testing
-docker compose -f container/compose/docker-compose.node-example.yml up -d
+docker compose -f container/compose/docker-compose.connected-nodes.yml up -d
 ```
 
 ---
