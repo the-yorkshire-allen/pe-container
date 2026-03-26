@@ -1,0 +1,71 @@
+# Puppet Enterprise Configuration with Code Manager and r10k
+# 
+# This configuration enables:
+# - Automated Code Manager setup with r10k
+# - GitHub integration for control repository management
+# - Optional initial Code Manager deployment trigger at bootstrap
+# - SSH key-based authentication for r10k
+#
+# BOOTSTRAP AUTOMATION:
+# During first-time setup, the bootstrap process will automatically:
+# 1. Finish installer and post-install convergence
+# 2. Optionally trigger an initial code deploy via Code Manager API
+# 3. Continue startup even if the deploy trigger is skipped
+#
+# CUSTOMIZATION via environment variables (set before docker-compose up -d):
+# - CODE_MANAGER_INITIAL_DEPLOY: Set to "false" to skip trigger (default: "true")
+# - CODE_MANAGER_DEPLOY_METHOD: bootstrap-webhook|auto|deploys|webhook (default: bootstrap-webhook)
+# - CODE_MANAGER_DEPLOY_USER: RBAC user for bootstrap-webhook flow (default: code_deploy)
+# - CODE_MANAGER_TOKEN_LIFETIME: RBAC token lifetime for bootstrap-webhook (default: 17520h)
+# - CODE_MANAGER_DEPLOY_TOKEN: Manual RBAC token for deploys endpoint (optional)
+# - CODE_MANAGER_WEBHOOK_TOKEN: Manual token for webhook endpoint (optional)
+#
+# REQUIRED FILES (mount before startup):
+# - pe.conf: This file, mounted at /etc/puppetlabs/pe/pe.conf
+# - r10k deploy key: Private SSH key, mounted at /etc/puppetlabs/keys/r10k-deploy-key
+#
+
+# CONSOLE SETTINGS
+"console_admin_password" = "theYorkshireAllen123!"
+
+# PUPPET MASTER IDENTITY
+"puppet_enterprise::puppet_master_host" = "pe-primary"
+"puppet_enterprise::certname" = "pe-primary"
+
+# CODE MANAGER CONFIGURATION
+# Enables automatic deployment model (Git-driven Puppet)
+"puppet_enterprise::profile::master::code_manager_auto_configure" = true
+
+# r10k GIT REPOSITORY SETTINGS
+# Point to your control repository on GitHub or other Git host
+"puppet_enterprise::profile::master::r10k_remote" = "git@github.com:the-yorkshire-allen/pe-rbac.git"
+
+# r10k PRIVATE KEY
+# This key is auto-staged from the host during bootstrap
+# Must be readable by pe-puppet user (bootstrap handles permissions)
+"puppet_enterprise::profile::master::r10k_private_key" = "/etc/puppetlabs/keys/r10k-deploy-key"
+
+# r10k KNOWN_HOSTS
+# SSH host key verification for GitHub (or your Git host)
+# Bootstrap auto-generates this from ssh-keyscan if not provided
+# Format: Array of hashes with name (hostname), type (SSH algorithm), key (public key)
+"puppet_enterprise::profile::master::r10k_known_hosts" = [
+  {
+    "name": "github.com",
+    "type": "ssh-rsa",
+    "key": "AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk="
+  },
+  {
+    "name": "github.com",
+    "type": "ecdsa-sha2-nistp256",
+    "key": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg="
+  },
+  {
+    "name": "github.com",
+    "type": "ssh-ed25519",
+    "key": "AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+  }
+]
+
+# r10k TIMEOUT
+"puppet_enterprise::profile::master::r10k_remote_timeout" = 60

@@ -28,13 +28,23 @@ services:
       - pe-data:/opt/puppetlabs
       - pe-logs:/var/log/puppetlabs
       - pe-state:/puppet/state
-      - ${R10K_PRIVATE_KEY_SOURCE:-../../secrets/r10k-deploy-key}:${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}:ro
+      - ${R10K_PRIVATE_KEY_SOURCE:-../../secrets/r10k-deploy-key}:${R10K_PRIVATE_KEY_STAGING:-/puppet/state/r10k/r10k-deploy-key.host}:ro
       # Mount pe.conf read-only (override with PE_CONF_PATH)
       - ${PE_CONF_PATH:-../../config_examples/pe-primary.conf}:/etc/puppetlabs/pe/pe.conf:ro
     environment:
       - PE_CONF_FILE=/etc/puppetlabs/pe/pe.conf
       - PE_STATE_DIR=/puppet/state
       - R10K_PRIVATE_KEY_PATH=${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}
+      - R10K_PRIVATE_KEY_STAGING=${R10K_PRIVATE_KEY_STAGING:-/puppet/state/r10k/r10k-deploy-key.host}
+      - CODE_MANAGER_DEPLOY_METHOD=${CODE_MANAGER_DEPLOY_METHOD:-bootstrap-deploys}
+      - CODE_MANAGER_DEPLOY_USER=${CODE_MANAGER_DEPLOY_USER:-code_deploy}
+      - CODE_MANAGER_DEPLOY_PASSWORD=${CODE_MANAGER_DEPLOY_PASSWORD:-}
+      - CODE_MANAGER_BOOTSTRAP_LOGIN=${CODE_MANAGER_BOOTSTRAP_LOGIN:-admin}
+      - CODE_MANAGER_BOOTSTRAP_PASSWORD=${CODE_MANAGER_BOOTSTRAP_PASSWORD:-}
+      - CODE_MANAGER_TOKEN_LIFETIME=${CODE_MANAGER_TOKEN_LIFETIME:-17520h}
+      - CODE_MANAGER_TOKEN_LABEL=${CODE_MANAGER_TOKEN_LABEL:-bootstrap-deploys-token}
+      - CODE_MANAGER_TOKEN_FILE=${CODE_MANAGER_TOKEN_FILE:-/puppet/state/code-manager/deploy-token}
+      - 'CODE_MANAGER_DEPLOY_PAYLOAD=${CODE_MANAGER_DEPLOY_PAYLOAD:-{"deploy-all": true}}'
     healthcheck:
       test: ["/bin/bash", "-c", "/puppet/healthcheck.sh"]
       interval: 30s

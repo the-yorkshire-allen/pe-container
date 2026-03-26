@@ -31,7 +31,7 @@ services:
       - pe-logs:/var/log/puppetlabs
       - pe-state:/puppet/state
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
-      - ${R10K_PRIVATE_KEY_SOURCE:-../../secrets/r10k-deploy-key}:${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}:ro
+      - ${R10K_PRIVATE_KEY_SOURCE:-../../secrets/r10k-deploy-key}:${R10K_PRIVATE_KEY_STAGING:-/puppet/state/r10k/r10k-deploy-key.host}:ro
       
       # Optional: mount host pe.conf (override with PE_CONF_PATH)
       - ${PE_CONF_PATH:-../../config_examples/pe-primary.conf}:/etc/puppetlabs/pe/pe.conf:ro
@@ -46,6 +46,16 @@ services:
       PE_STATE_DIR: /puppet/state
       PE_INSTALLER_STAGING: /puppet/installer-staging
       R10K_PRIVATE_KEY_PATH: ${R10K_PRIVATE_KEY_PATH:-/etc/puppetlabs/keys/r10k-deploy-key}
+      R10K_PRIVATE_KEY_STAGING: ${R10K_PRIVATE_KEY_STAGING:-/puppet/state/r10k/r10k-deploy-key.host}
+      CODE_MANAGER_DEPLOY_METHOD: ${CODE_MANAGER_DEPLOY_METHOD:-bootstrap-deploys}
+      CODE_MANAGER_DEPLOY_USER: ${CODE_MANAGER_DEPLOY_USER:-code_deploy}
+      CODE_MANAGER_DEPLOY_PASSWORD: ${CODE_MANAGER_DEPLOY_PASSWORD:-}
+      CODE_MANAGER_BOOTSTRAP_LOGIN: ${CODE_MANAGER_BOOTSTRAP_LOGIN:-admin}
+      CODE_MANAGER_BOOTSTRAP_PASSWORD: ${CODE_MANAGER_BOOTSTRAP_PASSWORD:-}
+      CODE_MANAGER_TOKEN_LIFETIME: ${CODE_MANAGER_TOKEN_LIFETIME:-17520h}
+      CODE_MANAGER_TOKEN_LABEL: ${CODE_MANAGER_TOKEN_LABEL:-bootstrap-deploys-token}
+      CODE_MANAGER_TOKEN_FILE: ${CODE_MANAGER_TOKEN_FILE:-/puppet/state/code-manager/deploy-token}
+      CODE_MANAGER_DEPLOY_PAYLOAD: '${CODE_MANAGER_DEPLOY_PAYLOAD:-{"deploy-all": true}}'
     
     # Restart policy
     restart: unless-stopped
@@ -83,6 +93,13 @@ volumes:
 #   Default PE_CONF_PATH is ../../config_examples/pe-primary.conf (relative to this file)
 #   Optional: set R10K_PRIVATE_KEY_SOURCE to host private key path
 #   Optional: set R10K_PRIVATE_KEY_PATH (in-container path), default /etc/puppetlabs/keys/r10k-deploy-key
+#   Optional: set R10K_PRIVATE_KEY_STAGING (in-container read-only staging path), default /puppet/state/r10k/r10k-deploy-key.host
+#   Optional: set CODE_MANAGER_DEPLOY_METHOD (default bootstrap-deploys)
+#   Optional: set CODE_MANAGER_DEPLOY_USER (default code_deploy)
+#   Optional: set CODE_MANAGER_DEPLOY_PASSWORD (seed password; otherwise bootstrap generates one)
+#   Optional: set CODE_MANAGER_BOOTSTRAP_LOGIN (default admin)
+#   Optional: set CODE_MANAGER_BOOTSTRAP_PASSWORD (if unset, bootstrap reads console_admin_password from pe.conf)
+#   Optional: set CODE_MANAGER_TOKEN_FILE (default /puppet/state/code-manager/deploy-token)
 #   Start: docker-compose -f container/compose/docker-compose.pe-primary.yml up -d --no-build
 #   Reset: docker-compose -f container/compose/docker-compose.pe-primary.yml exec pe-primary /puppet/reset-runtime-state.sh && docker-compose -f container/compose/docker-compose.pe-primary.yml restart
 #   Logs: docker-compose -f container/compose/docker-compose.pe-primary.yml logs -f pe-primary

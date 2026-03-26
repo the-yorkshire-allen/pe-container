@@ -34,16 +34,20 @@ make build PE_VERSION="${PE_VERSION}" PE_INSTALLER_TAR_PATH="${PE_INSTALLER_TAR_
    - Confirms installer file exists and is readable
    - Validates tar.gz format
 
-2. **Installer Extraction**
-   - Extracts tar contents into a staging location inside the container
+2. **Installer Archive Staging**
+   - Stages validated installer tar.gz into the image at `/puppet/installer-staging/installer.tar.gz`
    - Records build metadata (version, timestamp, source path)
 
-3. **Lifecycle Scripts Setup**
+3. **Bootstrap-Time Extraction**
+   - On first container startup, bootstrap extracts the installer archive into `/puppet/installer-staging/`
+   - Installer payload is cleaned up after successful installation
+
+4. **Lifecycle Scripts Setup**
    - Copies entrypoint, healthcheck, bootstrap, state management into container
    - Configures tini as PID 1 for signal handling
    - Wires Docker healthcheck endpoint
 
-4. **Image Tagging**
+5. **Image Tagging**
    - Tags image as `pe-container:${PE_VERSION}` and `pe-container:latest`
    - Ready for immediate deployment or registry push
 
@@ -93,6 +97,14 @@ R10K_PRIVATE_KEY_SOURCE="$PWD/secrets/r10k-deploy-key" \
 PE_CONF_PATH="$PWD/config_examples/pe-code-manager-rbac.conf" \
 docker-compose -f container/compose/docker-compose.pe-primary.yml up -d --no-build
 ```
+
+**AUTOMATIC INITIAL DEPLOY**: After post-install convergence, bootstrap invokes `/puppet/code-manager-initial-deploy.sh` (built from `container/scripts/code-manager-initial-deploy.sh`). The default `bootstrap-deploys` flow creates or reuses a dedicated deploy user, ensures `Code Deployers` role membership, mints a long-lived token for that user, and calls the Code Manager deploys API on `8170` with `X-Authentication`. A short-lived bootstrap credential is used only for RBAC provisioning and is never sent to Code Manager. The generated deploy token metadata is persisted to `/puppet/state/code-manager/deploy-token` (override with `CODE_MANAGER_TOKEN_FILE`). Manual token modes (`deploys` or `webhook`) are also supported. See [Code Manager Automation](docs/code-manager-automation.md) for details.
+
+Notes:
+
+- The example config uses an SSH control-repo URL (`git@github.com:...`) so the deploy key is used by r10k.
+- The mounted key is staged read-only, then bootstrap copies it to `/etc/puppetlabs/keys/r10k-deploy-key` with `pe-puppet` ownership and `0400` mode.
+- Bootstrap auto-generates `/etc/puppetlabs/keys/r10k-known_hosts` for the SSH host when it is not already present.
 
 If you want to choose a specific `pe.conf`, set `PE_CONF_PATH` inline:
 

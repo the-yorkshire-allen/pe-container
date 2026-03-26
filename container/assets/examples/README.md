@@ -18,10 +18,9 @@ The container build process accepts the Puppet Enterprise installer as a local f
 ### Build Lifecycle
 
 1. **Stage into Build Context**: `make build` copies the installer tar.gz from `PE_INSTALLER_TAR_PATH` to `container/assets/pe-installer/installer.tar.gz` so Docker build can access it.
-2. **Extract**: The build process extracts the staged installer archive to a staging location inside the container (`/puppet/installer-staging/`).
-3. **Validate**: Metadata verification ensures the contents match the declared version.
-4. **Install**: The installation script runs inside the container on first boot.
-5. **Cleanup**: After verified installation completion, installer artifacts are removed from the runtime filesystem to reduce image bloat and operator confusion.
+2. **Validate**: Build-time validation ensures archive readability and version metadata consistency.
+3. **Install**: On first boot, bootstrap extracts `/puppet/installer-staging/installer.tar.gz` and runs the installer.
+4. **Cleanup**: After verified installation completion, extracted installer artifacts are removed from the runtime filesystem.
 
 ### Example Build Command
 
